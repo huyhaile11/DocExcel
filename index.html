@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
-<title>Excel Viewer – Tabs + Search + Styles</title>
+<title>Excel Viewer – Highlight Search</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
 <style>
@@ -59,15 +59,11 @@
         border: 1px solid #ccc;
     }
 
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 10px;
-    }
-
-    table td, table th {
-        border: 1px solid #bbb;
-        padding: 6px;
+    /* highlight giống ctrl+f */
+    .highlight {
+        background: yellow !important;
+        color: black !important;
+        font-weight: bold;
     }
 </style>
 
@@ -76,7 +72,7 @@
 
 <div id="author">CREATED BY HẢI 9</div>
 
-<h1>Đọc Excel – Tabs + Search + Giữ màu sắc</h1>
+<h1>Đọc Excel – Tabs + Highlight Search + Giữ màu Excel</h1>
 
 <input type="file" id="excelFile" accept=".xlsx,.xls" />
 
@@ -93,7 +89,7 @@ document.getElementById("excelFile").addEventListener("change", function(e) {
         const data = evt.target.result;
         const workbook = XLSX.read(data, {
             type: "binary",
-            cellStyles: true  // giữ màu, merge, borders
+            cellStyles: true
         });
 
         const validSheets = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
@@ -109,27 +105,23 @@ document.getElementById("excelFile").addEventListener("change", function(e) {
         validSheets.forEach(sheetName => {
             if (workbook.Sheets[sheetName]) {
 
-                // Tạo nút tab
                 const btn = document.createElement("button");
                 btn.className = "tab-btn";
                 btn.textContent = sheetName;
                 btn.onclick = () => showSheet(sheetName);
                 tabsDiv.appendChild(btn);
 
-                // Chuyển sheet thành HTML giữ style
                 const html = XLSX.utils.sheet_to_html(workbook.Sheets[sheetName], {
                     cellStyles: true
                 });
 
-                // Tạo khung chứa sheet
                 const div = document.createElement("div");
                 div.className = "sheet-content";
                 div.id = "sheet-" + sheetName;
 
-                // Thêm ô tìm kiếm + bảng
                 div.innerHTML = `
                     <div class="search-box">
-                        <input type="text" class="search-input" placeholder="Tìm trong sheet ${sheetName}..." onkeyup="searchInSheet('${sheetName}', this.value)">
+                        <input type="text" class="search-input" placeholder="Tìm giống Ctrl+F..." onkeyup="highlightSearch('${sheetName}', this.value)">
                     </div>
                     <div class="sheet-table">${html}</div>
                 `;
@@ -146,9 +138,9 @@ document.getElementById("excelFile").addEventListener("change", function(e) {
     reader.readAsBinaryString(file);
 });
 
-// ------------------------
+// -------------------------
 // HIỆN SHEET ĐƯỢC CHỌN
-// ------------------------
+// -------------------------
 function showSheet(name) {
     document.querySelectorAll(".sheet-content").forEach(div => div.style.display = "none");
     document.querySelectorAll(".tab-btn").forEach(btn => btn.classList.remove("active"));
@@ -160,18 +152,29 @@ function showSheet(name) {
     });
 }
 
-// ------------------------
-// TÌM KIẾM TRONG SHEET
-// ------------------------
-function searchInSheet(sheetName, keyword) {
+// -------------------------
+// SEARCH GIỐNG CTRL + F
+// -------------------------
+function highlightSearch(sheetName, keyword) {
     const table = document.querySelector(`#sheet-${sheetName} table`);
-    const rows = table.querySelectorAll("tr");
+    const cells = table.querySelectorAll("td, th");
 
-    keyword = keyword.toLowerCase();
+    // xóa highlight cũ
+    cells.forEach(cell => {
+        cell.innerHTML = cell.innerHTML.replace(/<span class="highlight">(.*?)<\/span>/g, "$1");
+    });
 
-    rows.forEach(row => {
-        const text = row.innerText.toLowerCase();
-        row.style.display = text.includes(keyword) ? "" : "none";
+    if (!keyword.trim()) return;
+
+    const kw = keyword.toLowerCase();
+
+    cells.forEach(cell => {
+        const text = cell.innerText.toLowerCase();
+        if (text.includes(kw)) {
+            const original = cell.innerHTML;
+            const regex = new RegExp(keyword, "gi");
+            cell.innerHTML = original.replace(regex, match => `<span class="highlight">${match}</span>`);
+        }
     });
 }
 </script>
