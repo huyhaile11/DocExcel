@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
-<title>Excel Viewer – Tabs</title>
+<title>Excel Viewer – Tabs + Search + Styles</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
 <style>
@@ -12,11 +12,16 @@
         background: #f5f7fa;
     }
 
-    h1 { margin-bottom: 20px; }
+    #author {
+        font-size: 22px;
+        font-weight: bold;
+        color: #1d4ed8;
+        margin-bottom: 20px;
+    }
 
     #tabs {
-        margin-top: 25px;
-        margin-bottom: 15px;
+        margin-top: 20px;
+        margin-bottom: 10px;
     }
 
     .tab-btn {
@@ -43,26 +48,35 @@
         margin-top: 10px;
     }
 
+    .search-box {
+        margin-bottom: 12px;
+    }
+
+    .search-input {
+        padding: 8px;
+        width: 260px;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+    }
+
     table {
         width: 100%;
         border-collapse: collapse;
         margin-top: 10px;
     }
 
-    table, th, td {
+    table td, table th {
         border: 1px solid #bbb;
         padding: 6px;
-    }
-
-    th {
-        background: #d9e6ff;
     }
 </style>
 
 </head>
 <body>
 
-<h1>Đọc Excel – Hiển thị sheet với Tab</h1>
+<div id="author">CREATED BY HẢI 9</div>
+
+<h1>Đọc Excel – Tabs + Search + Giữ màu sắc</h1>
 
 <input type="file" id="excelFile" accept=".xlsx,.xls" />
 
@@ -77,7 +91,10 @@ document.getElementById("excelFile").addEventListener("change", function(e) {
     const reader = new FileReader();
     reader.onload = function(evt) {
         const data = evt.target.result;
-        const workbook = XLSX.read(data, { type: "binary" });
+        const workbook = XLSX.read(data, {
+            type: "binary",
+            cellStyles: true  // giữ màu, merge, borders
+        });
 
         const validSheets = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 
@@ -99,44 +116,62 @@ document.getElementById("excelFile").addEventListener("change", function(e) {
                 btn.onclick = () => showSheet(sheetName);
                 tabsDiv.appendChild(btn);
 
-                // Tạo nội dung sheet
-                const sheet = workbook.Sheets[sheetName];
-                const html = XLSX.utils.sheet_to_html(sheet);
+                // Chuyển sheet thành HTML giữ style
+                const html = XLSX.utils.sheet_to_html(workbook.Sheets[sheetName], {
+                    cellStyles: true
+                });
 
+                // Tạo khung chứa sheet
                 const div = document.createElement("div");
                 div.className = "sheet-content";
                 div.id = "sheet-" + sheetName;
-                div.innerHTML = html;
+
+                // Thêm ô tìm kiếm + bảng
+                div.innerHTML = `
+                    <div class="search-box">
+                        <input type="text" class="search-input" placeholder="Tìm trong sheet ${sheetName}..." onkeyup="searchInSheet('${sheetName}', this.value)">
+                    </div>
+                    <div class="sheet-table">${html}</div>
+                `;
+
                 resultDiv.appendChild(div);
 
                 if (!firstSheet) firstSheet = sheetName;
             }
         });
 
-        // Hiển thị sheet đầu tiên
         if (firstSheet) showSheet(firstSheet);
     };
 
     reader.readAsBinaryString(file);
 });
 
+// ------------------------
+// HIỆN SHEET ĐƯỢC CHỌN
+// ------------------------
 function showSheet(name) {
-    // Ẩn tất cả sheet
-    document.querySelectorAll(".sheet-content").forEach(div => {
-        div.style.display = "none";
-    });
+    document.querySelectorAll(".sheet-content").forEach(div => div.style.display = "none");
+    document.querySelectorAll(".tab-btn").forEach(btn => btn.classList.remove("active"));
 
-    // Bỏ active tất cả nút
-    document.querySelectorAll(".tab-btn").forEach(btn => {
-        btn.classList.remove("active");
-    });
-
-    // Hiện sheet được chọn
     document.getElementById("sheet-" + name).style.display = "block";
 
-    // Active nút được chọn
     document.querySelectorAll(".tab-btn").forEach(btn => {
         if (btn.textContent === name) btn.classList.add("active");
+    });
+}
+
+// ------------------------
+// TÌM KIẾM TRONG SHEET
+// ------------------------
+function searchInSheet(sheetName, keyword) {
+    const table = document.querySelector(`#sheet-${sheetName} table`);
+    const rows = table.querySelectorAll("tr");
+
+    keyword = keyword.toLowerCase();
+
+    rows.forEach(row => {
+        const text = row.innerText.toLowerCase();
+        row.style.display = text.includes(keyword) ? "" : "none";
     });
 }
 </script>
