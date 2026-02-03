@@ -2,14 +2,15 @@
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
-<title>Excel Viewer – Highlight Search</title>
+<title>Excel Viewer - Tự động nhận diện tất cả Sheet</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
 <style>
     body {
-        font-family: Arial, sans-serif;
+        font-family: 'Segoe UI', Arial, sans-serif;
         padding: 20px;
         background: #f5f7fa;
+        color: #333;
     }
 
     #author {
@@ -17,21 +18,37 @@
         font-weight: bold;
         color: #1d4ed8;
         margin-bottom: 20px;
+        border-bottom: 2px solid #1d4ed8;
+        display: inline-block;
+    }
+
+    .upload-section {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        margin-bottom: 20px;
     }
 
     #tabs {
         margin-top: 20px;
-        margin-bottom: 10px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
     }
 
     .tab-btn {
-        padding: 10px 16px;
-        margin-right: 8px;
+        padding: 10px 20px;
         border: none;
         background: #e2e8f0;
         border-radius: 6px;
         cursor: pointer;
-        font-weight: bold;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+
+    .tab-btn:hover {
+        background: #cbd5e1;
     }
 
     .tab-btn.active {
@@ -41,28 +58,51 @@
 
     .sheet-content {
         display: none;
-        padding: 15px;
+        padding: 20px;
         background: white;
-        border-radius: 8px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        margin-top: 10px;
+        border-radius: 0 0 8px 8px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        overflow-x: auto;
     }
 
     .search-box {
-        margin-bottom: 12px;
+        margin-bottom: 15px;
+        position: sticky;
+        left: 0;
     }
 
     .search-input {
-        padding: 8px;
-        width: 260px;
+        padding: 10px;
+        width: 300px;
         border-radius: 6px;
-        border: 1px solid #ccc;
+        border: 1px solid #cbd5e1;
+        outline: none;
     }
 
-    /* highlight giống ctrl+f */
+    .search-input:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+    }
+
+    /* Table styling */
+    table {
+        border-collapse: collapse;
+        width: 100%;
+        margin-top: 10px;
+    }
+
+    td, th {
+        border: 1px solid #e2e8f0;
+        padding: 8px 12px;
+        text-align: left;
+    }
+
+    /* Highlight class */
     .highlight {
-        background: yellow !important;
-        color: black !important;
+        background: #fef08a !important;
+        color: #92400e !important;
+        padding: 2px;
+        border-radius: 2px;
         font-weight: bold;
     }
 </style>
@@ -72,9 +112,12 @@
 
 <div id="author">CREATED BY HẢI 9</div>
 
-<h1>Đọc Excel – Tabs + Highlight Search + Giữ màu Excel</h1>
+<h2>Hệ thống xem file Excel đa năng</h2>
 
-<input type="file" id="excelFile" accept=".xlsx,.xls" />
+<div class="upload-section">
+    <label for="excelFile">Chọn file Excel của bạn: </label>
+    <input type="file" id="excelFile" accept=".xlsx,.xls" />
+</div>
 
 <div id="tabs"></div>
 <div id="result"></div>
@@ -87,79 +130,86 @@ document.getElementById("excelFile").addEventListener("change", function(e) {
     const reader = new FileReader();
     reader.onload = function(evt) {
         const data = evt.target.result;
+        // Đọc toàn bộ file
         const workbook = XLSX.read(data, {
             type: "binary",
             cellStyles: true
         });
 
-        const validSheets = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
-
         const tabsDiv = document.getElementById("tabs");
         const resultDiv = document.getElementById("result");
 
+        // Reset nội dung cũ
         tabsDiv.innerHTML = "";
         resultDiv.innerHTML = "";
 
-        let firstSheet = null;
+        // Lấy tất cả tên sheet có trong file
+        const allSheetNames = workbook.SheetNames;
 
-        validSheets.forEach(sheetName => {
-            if (workbook.Sheets[sheetName]) {
+        allSheetNames.forEach((sheetName, index) => {
+            // 1. Tạo nút chọn Sheet (Tab)
+            const btn = document.createElement("button");
+            btn.className = "tab-btn";
+            btn.textContent = sheetName;
+            btn.onclick = () => showSheet(sheetName);
+            tabsDiv.appendChild(btn);
 
-                const btn = document.createElement("button");
-                btn.className = "tab-btn";
-                btn.textContent = sheetName;
-                btn.onclick = () => showSheet(sheetName);
-                tabsDiv.appendChild(btn);
+            // 2. Chuyển nội dung sheet sang HTML
+            const html = XLSX.utils.sheet_to_html(workbook.Sheets[sheetName], {
+                cellStyles: true
+            });
 
-                const html = XLSX.utils.sheet_to_html(workbook.Sheets[sheetName], {
-                    cellStyles: true
-                });
+            // 3. Tạo vùng chứa nội dung cho từng sheet
+            const div = document.createElement("div");
+            div.className = "sheet-content";
+            div.id = "sheet-" + sheetName.replace(/\s+/g, '-'); // Thay khoảng trắng bằng gạch nối cho ID
 
-                const div = document.createElement("div");
-                div.className = "sheet-content";
-                div.id = "sheet-" + sheetName;
+            div.innerHTML = `
+                <div class="search-box">
+                    <input type="text" class="search-input" 
+                           placeholder="Tìm kiếm trong sheet ${sheetName}..." 
+                           onkeyup="highlightSearch('${sheetName.replace(/\s+/g, '-')}', this.value)">
+                </div>
+                <div class="sheet-table">${html}</div>
+            `;
 
-                div.innerHTML = `
-                    <div class="search-box">
-                        <input type="text" class="search-input" placeholder="Tìm giống Ctrl+F..." onkeyup="highlightSearch('${sheetName}', this.value)">
-                    </div>
-                    <div class="sheet-table">${html}</div>
-                `;
+            resultDiv.appendChild(div);
 
-                resultDiv.appendChild(div);
-
-                if (!firstSheet) firstSheet = sheetName;
+            // Tự động mở sheet đầu tiên
+            if (index === 0) {
+                showSheet(sheetName);
             }
         });
-
-        if (firstSheet) showSheet(firstSheet);
     };
 
     reader.readAsBinaryString(file);
 });
 
-// -------------------------
-// HIỆN SHEET ĐƯỢC CHỌN
-// -------------------------
+// Hàm hiển thị sheet được chọn
 function showSheet(name) {
+    const sanitizedId = "sheet-" + name.replace(/\s+/g, '-');
+    
+    // Ẩn tất cả các sheet
     document.querySelectorAll(".sheet-content").forEach(div => div.style.display = "none");
+    // Bỏ active tất cả các nút
     document.querySelectorAll(".tab-btn").forEach(btn => btn.classList.remove("active"));
 
-    document.getElementById("sheet-" + name).style.display = "block";
+    // Hiển thị sheet được chọn
+    document.getElementById(sanitizedId).style.display = "block";
 
+    // Active nút tương ứng
     document.querySelectorAll(".tab-btn").forEach(btn => {
         if (btn.textContent === name) btn.classList.add("active");
     });
 }
 
-// -------------------------
-// SEARCH GIỐNG CTRL + F
-// -------------------------
-function highlightSearch(sheetName, keyword) {
-    const table = document.querySelector(`#sheet-${sheetName} table`);
+// Hàm tìm kiếm và highlight
+function highlightSearch(sheetId, keyword) {
+    const container = document.getElementById("sheet-" + sheetId);
+    const table = container.querySelector("table");
     const cells = table.querySelectorAll("td, th");
 
-    // xóa highlight cũ
+    // Xóa highlight cũ
     cells.forEach(cell => {
         cell.innerHTML = cell.innerHTML.replace(/<span class="highlight">(.*?)<\/span>/g, "$1");
     });
